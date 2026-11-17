@@ -1,0 +1,12 @@
+# Jangan unggah data & rahasia lokal ke Vercel saat deploy lewat CLI
+.env
+.env.*
+!.env.example
+prisma/*.db
+prisma/*.db-journal
+storage/uploads/*
+!storage/uploads/.gitkeep
+.claude
+.next
+node_modules
+tsconfig.tsbuildinfo

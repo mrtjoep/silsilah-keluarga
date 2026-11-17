@@ -152,7 +152,7 @@ Proyek ini sudah siap untuk Vercel **tanpa mengubah kode**. Lokal tetap memakai 
 2. Di vercel.com pilih **Add New → Project**, lalu impor repositori. Next.js terdeteksi otomatis. Vercel memakai script `vercel-build`, jadi *Build Command* tidak perlu diubah.
 3. **Database:** di tab **Storage → Create Database → Neon (Postgres)**, hubungkan ke proyek. `DATABASE_URL` dan `DATABASE_URL_UNPOOLED` terisi otomatis.
    Jika memakai Postgres lain, isi kedua variabel itu sendiri. Bila tidak ada pooler, isi keduanya dengan URL yang sama.
-4. **Foto:** di tab **Storage → Create → Blob**, pilih akses **Private**, lalu hubungkan ke proyek. `BLOB_READ_WRITE_TOKEN` terisi otomatis.
+4. **Foto:** di tab **Storage → Create → Blob**, pilih akses **Private**, lalu hubungkan ke proyek. Vercel otomatis mengisi `BLOB_STORE_ID` (atau `BLOB_READ_WRITE_TOKEN` pada store lama); keduanya dikenali.
    Jika store dibuat **Public**, tambahkan variabel `BLOB_ACCESS=public`.
 5. **Environment variables** (Settings → Environment Variables):
 

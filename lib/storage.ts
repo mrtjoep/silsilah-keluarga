@@ -7,7 +7,7 @@ import { del as blobDel, get as blobGet, put as blobPut } from "@vercel/blob";
 
 /**
  * Penyimpanan foto dengan dua mode:
- *  - Vercel Blob: aktif otomatis bila BLOB_READ_WRITE_TOKEN tersedia (produksi di Vercel)
+ *  - Vercel Blob: aktif otomatis bila BLOB_READ_WRITE_TOKEN atau BLOB_STORE_ID tersedia (produksi di Vercel)
  *  - Disk lokal (UPLOAD_DIR): untuk pengembangan / VPS
  *
  * Di database hanya disimpan nama berkas ("<uuid>.webp"). Foto selalu disajikan lewat
@@ -19,7 +19,9 @@ const BLOB_ACCESS = process.env.BLOB_ACCESS === "public" ? "public" : "private";
 export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const NAME_RE = /^[0-9a-f-]{36}\.webp$/;
 
-const blobEnabled = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+// Vercel Blob aktif bila ada token baca-tulis (cara lama) ATAU BLOB_STORE_ID
+// (cara baru: SDK login otomatis memakai OIDC Vercel saat berjalan di Vercel).
+const blobEnabled = () => !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 export class UploadError extends Error {}
 

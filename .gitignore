@@ -46,3 +46,6 @@ prisma/*.db-journal
 storage/uploads/*
 !storage/uploads/.gitkeep
 !.env.example
+
+# konfigurasi lokal Claude
+/.claude/
