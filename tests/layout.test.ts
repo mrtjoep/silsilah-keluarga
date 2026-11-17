@@ -56,3 +56,40 @@ for (const direction of ["DOWN", "RIGHT"] as const) {
     }
   });
 }
+
+// Dua keluarga besan: anak keluarga A menikah dengan anak keluarga B (kasus garis bersilangan)
+const twoFamilies: FamilyData = {
+  persons: [
+    P("kakekA", "MALE", "1941"), P("nenekA", "FEMALE", "1949"),
+    P("kakekB", "MALE", "1952"), P("nenekB", "FEMALE", "1955"),
+    P("anakA1", "MALE", "1971"), P("menantuLaki", "MALE", "1973"),
+    P("menantuPerempuan", "FEMALE", "1977"), P("anakB2", "FEMALE", "1979"), P("anakB3", "MALE", "1989"),
+    P("cucu1", "FEMALE", "1999"), P("cucu2", "FEMALE", "2001"),
+  ],
+  parentLinks: [
+    ["kakekA", "anakA1"], ["nenekA", "anakA1"], ["kakekA", "menantuLaki"], ["nenekA", "menantuLaki"],
+    ["kakekB", "menantuPerempuan"], ["nenekB", "menantuPerempuan"], ["kakekB", "anakB2"], ["nenekB", "anakB2"],
+    ["kakekB", "anakB3"], ["nenekB", "anakB3"],
+    ["menantuLaki", "cucu1"], ["menantuPerempuan", "cucu1"], ["menantuLaki", "cucu2"], ["menantuPerempuan", "cucu2"],
+  ].map(([p, c], i) => ({ id: `m${i}`, parentId: p, childId: c, type: "BIOLOGICAL" as const })),
+  unions: [
+    { id: "ua", partner1Id: "kakekA", partner2Id: "nenekA", status: "MARRIED" as const, marriageDate: null, endDate: null },
+    { id: "ub", partner1Id: "kakekB", partner2Id: "nenekB", status: "MARRIED" as const, marriageDate: null, endDate: null },
+    { id: "uc", partner1Id: "menantuLaki", partner2Id: "menantuPerempuan", status: "MARRIED" as const, marriageDate: null, endDate: null },
+  ],
+};
+
+for (const direction of ["DOWN", "RIGHT"] as const) {
+  test(`pasangan dari dua keluarga diletakkan di sisi keluarganya (${direction})`, async () => {
+    const { nodes } = await layoutFamily(twoFamilies, direction);
+    const at = (id: string) => {
+      const n = nodes.find((x) => x.id === id)!;
+      return direction === "DOWN" ? n.position.x : n.position.y;
+    };
+    // anak keluarga A seluruhnya di satu sisi, anak keluarga B di sisi lain → garisnya tidak bersilangan
+    const famA = ["anakA1", "menantuLaki"].map(at);
+    const famB = ["menantuPerempuan", "anakB2", "anakB3"].map(at);
+    assert.ok(Math.max(...famA) < Math.min(...famB), `keluarga A (${famA}) harus seluruhnya sebelum keluarga B (${famB})`);
+    assert.ok(at("menantuLaki") < at("menantuPerempuan"), "suami (keluarga A) di sisi keluarga A");
+  });
+}

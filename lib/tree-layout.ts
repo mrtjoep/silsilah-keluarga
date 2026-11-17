@@ -296,10 +296,23 @@ function modelOrder(
     if (seen.has(id)) return;
     const us = unionsOf.get(id) ?? [];
     const spouse = (u: (typeof us)[number]) => (u.partner1Id === id ? u.partner2Id : u.partner1Id);
-    // pasangan pertama di kiri, orang ini, pasangan berikutnya di kanan
-    if (us[0]) emit(spouse(us[0]));
+    // Pasangan ditempatkan di sisi keluarga asalnya agar garis tidak bersilangan:
+    //  - pasangan yang keluarganya (orang tua) BELUM ditempatkan → di KANAN (keluarganya menyusul di kanan)
+    //  - pasangan yang keluarganya SUDAH ditempatkan → sudah muncul di kiri (tidak di-emit ulang)
+    //  - pasangan tanpa keluarga tercatat: bila menikah lebih dari sekali, pasangan pertama di kiri
+    //    (agar orang ini berada di tengah), selebihnya di kanan
+    const left: string[] = [];
+    const right: string[] = [];
+    us.forEach((u, i) => {
+      const s = spouse(u);
+      if (seen.has(s)) return;
+      const familyPending = (parentsOf.get(s) ?? []).some((x) => !seen.has(x.parentId));
+      if (!familyPending && i === 0 && us.length > 1) left.push(s);
+      else right.push(s);
+    });
+    left.forEach(emit);
     emit(id);
-    for (const u of us.slice(1)) emit(spouse(u));
+    right.forEach(emit);
     for (const u of us) emit(`u-${u.id}`);
     const kidsDone = new Set<string>();
     for (const u of us) {
