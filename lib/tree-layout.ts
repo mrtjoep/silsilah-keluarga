@@ -197,7 +197,71 @@ export async function layoutFamily(
     }
   }
 
+  assignLanes(nodes, rfEdges, vertical);
   return { nodes, edges: rfEdges };
+}
+
+/**
+ * Garis orang tua → anak berbelok di antara dua generasi. Bila semua garis berbelok di
+ * ketinggian yang sama, garis mendatar milik pasangan berbeda (mis. pernikahan pertama &
+ * kedua) bisa menyatu sehingga anak tampak tersambung ke orang tua yang salah.
+ * Fungsi ini memberi tiap kelompok (sumber garis → anak-anaknya) "jalur" ketinggian sendiri
+ * bila rentang mendatarnya bertumpuk dengan kelompok lain.
+ */
+function assignLanes(nodes: FamilyNode[], edges: Edge[], vertical: boolean) {
+  const box = new Map(nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.width ?? 0, h: n.height ?? 0 }]));
+  type Group = { layer: number; lo: number; hi: number; srcEnd: number; edges: Edge[] };
+  const groups = new Map<string, Group>();
+  for (const e of edges) {
+    if ((e.data as { kind?: string } | undefined)?.kind !== "child") continue;
+    const s = box.get(e.source);
+    const t = box.get(e.target);
+    if (!s || !t) continue;
+    // "cross" = sumbu mendatar garis belok, "flow" = arah generasi
+    const sCross = vertical ? s.x + s.w / 2 : s.y + s.h / 2;
+    const tCross = vertical ? t.x + t.w / 2 : t.y + t.h / 2;
+    const srcEnd = vertical ? s.y + s.h : s.x + s.w;
+    const layer = Math.round(vertical ? t.y : t.x);
+    const key = `${e.source}|${layer}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { layer, lo: sCross, hi: sCross, srcEnd, edges: [] };
+      groups.set(key, g);
+    }
+    g.lo = Math.min(g.lo, tCross);
+    g.hi = Math.max(g.hi, tCross);
+    g.srcEnd = Math.max(g.srcEnd, srcEnd);
+    g.edges.push(e);
+  }
+
+  const byLayer = new Map<number, Group[]>();
+  for (const g of groups.values()) byLayer.set(g.layer, [...(byLayer.get(g.layer) ?? []), g]);
+
+  const GAP = 60; // kelompok yang berdekatan (< 60px) juga dipisah jalurnya agar tidak tampak menyambung
+  for (const [layer, gs] of byLayer) {
+    gs.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
+    const laneEnds: number[] = [];
+    const laneOf = new Map<Group, number>();
+    for (const g of gs) {
+      let i = laneEnds.findIndex((end) => end + GAP < g.lo);
+      if (i === -1) {
+        i = laneEnds.length;
+        laneEnds.push(g.hi);
+      } else laneEnds[i] = g.hi;
+      laneOf.set(g, i);
+    }
+    const lanes = laneEnds.length;
+    const top = Math.max(...gs.map((g) => g.srcEnd)) + 6;
+    const bottom = layer - 8;
+    for (const g of gs) {
+      const i = laneOf.get(g)!;
+      const c = top + ((bottom - top) * (i + 1)) / (lanes + 1);
+      for (const e of g.edges) {
+        e.type = "family";
+        e.data = { ...(e.data ?? {}), ...(vertical ? { centerY: c } : { centerX: c }) };
+      }
+    }
+  }
 }
 
 /**

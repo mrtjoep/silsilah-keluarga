@@ -201,7 +201,18 @@ export default async function PersonPage({
         <Card className="lg:col-span-3">
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-xl">Keluarga</CardTitle>
-            {canEdit && <AddRelationDialog treeId={treeId} personId={personId} personName={person.fullName} candidates={candidates} />}
+            {canEdit && (
+              <AddRelationDialog
+                treeId={treeId}
+                personId={personId}
+                personName={person.fullName}
+                candidates={candidates}
+                spouses={unions.map((u) => {
+                  const sid = u.partner1Id === personId ? u.partner2Id : u.partner1Id;
+                  return { id: sid, name: idx.byId.get(sid)?.fullName ?? "" };
+                })}
+              />
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             <section>

@@ -23,7 +23,17 @@ export async function addRelationAction(treeId: string, input: unknown): Promise
     if (!parsed.success) return { ok: false, error: "Periksa kembali isian.", fieldErrors: zodFieldErrors(parsed.error) };
     const d = parsed.data;
     if (d.kind === "parent") await linkParent(treeId, d.relatedId, d.personId, d.parentType);
-    else if (d.kind === "child") await linkParent(treeId, d.personId, d.relatedId, d.parentType);
+    else if (d.kind === "child") {
+      await linkParent(treeId, d.personId, d.relatedId, d.parentType);
+      if (d.otherParentId && d.otherParentId !== d.personId) {
+        try {
+          await linkParent(treeId, d.otherParentId, d.relatedId, d.parentType);
+        } catch (e) {
+          // relasi dengan orang tua lainnya mungkin sudah ada — itu bukan kesalahan
+          if (!(e instanceof RelationError && e.message.includes("sudah ada"))) throw e;
+        }
+      }
+    }
     else await linkSpouse(treeId, d.personId, d.relatedId, d.unionStatus, d.marriageDate);
     touch(treeId);
     return { ok: true, message: "Relasi berhasil ditambahkan." };

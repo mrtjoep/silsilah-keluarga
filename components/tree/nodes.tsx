@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { BaseEdge, getSmoothStepPath, Handle, Position, type EdgeProps, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { lifeSpan } from "@/lib/dates";
 import { PersonAvatar } from "@/components/person/person-avatar";
@@ -74,3 +74,32 @@ export const UnionNodeView = memo(function UnionNodeView({ data }: NodeProps<Uni
 });
 
 export const nodeTypes = { person: PersonNodeView, union: UnionNodeView };
+
+/** Garis orang tua → anak dengan titik belok yang diatur tata letak (jalur per pasangan). */
+export const FamilyEdge = memo(function FamilyEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  data,
+}: EdgeProps) {
+  const d = data as { centerX?: number; centerY?: number } | undefined;
+  const [path] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 6,
+    centerX: d?.centerX,
+    centerY: d?.centerY,
+  });
+  return <BaseEdge id={id} path={path} style={style} />;
+});
+
+export const edgeTypes = { family: FamilyEdge };

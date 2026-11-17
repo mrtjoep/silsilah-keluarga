@@ -20,12 +20,15 @@ export function AddRelationDialog({
   personId,
   personName,
   candidates,
+  spouses = [],
   defaultKind = "child",
 }: {
   treeId: string;
   personId: string;
   personName: string;
   candidates: { id: string; name: string; year: string }[];
+  /** pasangan orang ini — dipakai untuk memilih orang tua lainnya saat menambah anak */
+  spouses?: { id: string; name: string }[];
   defaultKind?: Kind;
 }) {
   const t = useTranslations("relation");
@@ -40,6 +43,8 @@ export function AddRelationDialog({
   const [parentType, setParentType] = useState("BIOLOGICAL");
   const [unionStatus, setUnionStatus] = useState("MARRIED");
   const [marriageDate, setMarriageDate] = useState("");
+  // default: pasangan pertama, agar anak langsung terhubung ke pasangan (bukan hanya satu orang tua)
+  const [otherParentId, setOtherParentId] = useState(spouses[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -52,7 +57,15 @@ export function AddRelationDialog({
     setError(null);
     if (!relatedId) return setError("Pilih anggota keluarga terlebih dahulu.");
     start(async () => {
-      const res = await addRelationAction(treeId, { personId, relatedId, kind, parentType, unionStatus, marriageDate });
+      const res = await addRelationAction(treeId, {
+        personId,
+        relatedId,
+        kind,
+        parentType,
+        unionStatus,
+        marriageDate,
+        otherParentId: kind === "child" ? otherParentId : "",
+      });
       if (res.ok) {
         toast.success(res.message ?? t("added"));
         setOpen(false);
@@ -139,6 +152,23 @@ export function AddRelationDialog({
               )}
             </div>
           </Field>
+
+          {kind === "child" && spouses.length > 0 && (
+            <Field
+              label={`${t("otherParent")} (anak dari pasangan yang mana?)`}
+              htmlFor="rel-other"
+              hint="Anak akan terhubung ke kedua orang tua sehingga garisnya keluar dari pasangan yang benar."
+            >
+              <NativeSelect id="rel-other" value={otherParentId} onChange={(e) => setOtherParentId(e.target.value)}>
+                {spouses.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {personName} &amp; {s.name}
+                  </option>
+                ))}
+                <option value="">Hanya {personName} (orang tua lain tidak diketahui)</option>
+              </NativeSelect>
+            </Field>
+          )}
 
           {kind !== "spouse" ? (
             <Field label={t("parentType")} htmlFor="rel-ptype">

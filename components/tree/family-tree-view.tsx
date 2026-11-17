@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { NativeSelect } from "@/components/forms/field";
 import { focusSubset } from "@/lib/family";
 import { layoutFamily, type Direction, type FamilyNode } from "@/lib/tree-layout";
-import { nodeTypes } from "@/components/tree/nodes";
+import { edgeTypes, nodeTypes } from "@/components/tree/nodes";
 import { PersonPanel } from "@/components/tree/person-panel";
 import { exportPdf, exportPng, slugify } from "@/components/tree/export-tree";
 import type { FamilyData } from "@/types";
@@ -212,6 +212,7 @@ function TreeInner({ data, title, profileHrefBase, canEdit }: FamilyTreeViewProp
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           colorMode={mounted && resolvedTheme === "dark" ? "dark" : "light"}
           onNodeClick={(_, n) => n.type === "person" && setSelected(n.id)}
           nodesDraggable={false}

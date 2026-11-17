@@ -12,6 +12,11 @@ const partialDate = z
 export const addRelationSchema = z.object({
   personId: z.string().min(1),
   relatedId: z.string().min(1, "Pilih anggota keluarga"),
+  /** saat menambah anak: pasangan yang menjadi orang tua lainnya (opsional) */
+  otherParentId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null)),
   kind: z.enum(["parent", "child", "spouse"]),
   parentType: z.enum(PARENT_TYPES).default("BIOLOGICAL"),
   unionStatus: z.enum(UNION_STATUSES).default("MARRIED"),
