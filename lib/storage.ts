@@ -2,7 +2,6 @@ import "server-only";
 import { randomUUID } from "crypto";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
-import sharp from "sharp";
 import { del as blobDel, get as blobGet, put as blobPut } from "@vercel/blob";
 
 /**
@@ -40,6 +39,15 @@ export async function savePhoto(file: File): Promise<string> {
   if (file.size > MAX_PHOTO_BYTES) throw new UploadError("Ukuran foto maksimal 2 MB.");
   const buf = Buffer.from(await file.arrayBuffer());
   if (!sniffImage(buf)) throw new UploadError("Format foto harus JPG, PNG, atau WebP.");
+  // sharp (modul native) dimuat hanya saat ada upload, sehingga bila gagal dimuat
+  // di server hanya fitur foto yang terdampak, bukan seluruh halaman.
+  let sharp: typeof import("sharp").default;
+  try {
+    sharp = (await import("sharp")).default;
+  } catch (e) {
+    console.error("Modul sharp gagal dimuat:", e);
+    throw new UploadError("Fitur foto sedang tidak tersedia. Data lain tetap bisa disimpan tanpa foto.");
+  }
   let out: Buffer;
   try {
     out = await sharp(buf, { limitInputPixels: 40_000_000 })

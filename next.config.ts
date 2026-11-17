@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -12,6 +14,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp", "@prisma/client"],
+  // Root proyek dikunci agar lockfile di folder induk tidak dipakai saat menelusuri berkas
+  outputFileTracingRoot: path.dirname(fileURLToPath(import.meta.url)),
+  // Pastikan biner native sharp untuk Linux (runtime Vercel) ikut dikemas ke fungsi server
+  outputFileTracingIncludes: {
+    "/**": ["./node_modules/@img/sharp-linux-x64/**", "./node_modules/@img/sharp-libvips-linux-x64/**"],
+  },
   experimental: {
     serverActions: { bodySizeLimit: "5mb" },
   },

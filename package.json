@@ -16,7 +16,7 @@
     "db:pg:schema": "node scripts/postgres-schema.mjs",
     "db:pg:migrate": "node scripts/postgres-schema.mjs && prisma migrate dev --schema prisma/postgres/schema.prisma",
     "db:pg:seed": "prisma generate --schema prisma/postgres/schema.prisma && tsx prisma/seed.ts; prisma generate",
-    "vercel-build": "node scripts/postgres-schema.mjs --check && prisma generate --schema prisma/postgres/schema.prisma && prisma migrate deploy --schema prisma/postgres/schema.prisma && next build --turbopack"
+    "vercel-build": "node scripts/postgres-schema.mjs --check && prisma generate --schema prisma/postgres/schema.prisma && prisma migrate deploy --schema prisma/postgres/schema.prisma && next build"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
