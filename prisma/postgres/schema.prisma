@@ -1,0 +1,135 @@
+// ⚠️ BERKAS INI DIHASILKAN OTOMATIS dari prisma/schema.prisma — jangan diedit langsung.
+// Ubah prisma/schema.prisma lalu jalankan: npm run db:pg:schema
+// Skema database Silsilah Keluarga.
+// Catatan: nilai "enum" disimpan sebagai String dan divalidasi dengan Zod (lib/validations)
+// agar skema portabel antara SQLite dan PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // URL dengan connection pooling (dipakai aplikasi)
+  url       = env("DATABASE_URL")
+  // URL langsung tanpa pooler (dipakai migrasi). Isi sama dengan DATABASE_URL bila tidak memakai pooler.
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  accesses     TreeAccess[]
+}
+
+model FamilyTree {
+  id                 String       @id @default(cuid())
+  name               String
+  description        String?
+  isPublic           Boolean      @default(false)
+  publicSlug         String?      @unique
+  hideLivingInPublic Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  accesses           TreeAccess[]
+  persons            Person[]
+  unions             Union[]
+}
+
+/// Hak akses pengguna pada satu pohon. role: "ADMIN" | "EDITOR" | "VIEWER"
+model TreeAccess {
+  userId    String
+  treeId    String
+  role      String
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tree      FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, treeId])
+  @@index([treeId])
+}
+
+/// Tanggal disimpan sebagai teks parsial: "YYYY", "YYYY-MM", atau "YYYY-MM-DD"
+/// karena data silsilah sering hanya diketahui tahunnya.
+model Person {
+  id          String        @id @default(cuid())
+  treeId      String
+  fullName    String
+  nickname    String?
+  gender      String        @default("UNKNOWN") // "MALE" | "FEMALE" | "UNKNOWN"
+  birthDate   String?
+  birthPlace  String?
+  isDeceased  Boolean       @default(false)
+  deathDate   String?
+  deathPlace  String?
+  occupation  String?
+  photoPath   String?
+  bio         String?
+  phone       String?
+  email       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tree        FamilyTree    @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  /// relasi di mana orang ini adalah ANAK
+  parentLinks ParentChild[] @relation("ChildLinks")
+  /// relasi di mana orang ini adalah ORANG TUA
+  childLinks  ParentChild[] @relation("ParentLinks")
+  unionsAsP1  Union[]       @relation("Partner1")
+  unionsAsP2  Union[]       @relation("Partner2")
+  events      LifeEvent[]
+
+  @@index([treeId])
+  @@index([treeId, fullName])
+}
+
+/// Relasi orang tua - anak. type: "BIOLOGICAL" | "ADOPTED" | "STEP" | "FOSTER"
+model ParentChild {
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  type      String   @default("BIOLOGICAL")
+  createdAt DateTime @default(now())
+  parent    Person   @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  child     Person   @relation("ChildLinks", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([childId])
+}
+
+/// Hubungan pasangan. status: "MARRIED" | "DIVORCED" | "SEPARATED" | "WIDOWED"
+/// Seseorang bisa memiliki banyak Union (pernikahan kedua, poligami, dsb).
+model Union {
+  id           String     @id @default(cuid())
+  treeId       String
+  partner1Id   String
+  partner2Id   String
+  status       String     @default("MARRIED")
+  marriageDate String?
+  endDate      String?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  tree         FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  partner1     Person     @relation("Partner1", fields: [partner1Id], references: [id], onDelete: Cascade)
+  partner2     Person     @relation("Partner2", fields: [partner2Id], references: [id], onDelete: Cascade)
+
+  @@index([treeId])
+  @@index([partner1Id])
+  @@index([partner2Id])
+}
+
+/// Peristiwa tambahan pada timeline hidup (pendidikan, pindah rumah, dsb).
+model LifeEvent {
+  id          String   @id @default(cuid())
+  personId    String
+  date        String?
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+}

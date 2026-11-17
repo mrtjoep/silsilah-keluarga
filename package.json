@@ -6,22 +6,61 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force",
+    "postinstall": "prisma generate",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:pg:schema": "node scripts/postgres-schema.mjs",
+    "db:pg:migrate": "node scripts/postgres-schema.mjs && prisma migrate dev --schema prisma/postgres/schema.prisma",
+    "db:pg:seed": "prisma generate --schema prisma/postgres/schema.prisma && tsx prisma/seed.ts; prisma generate",
+    "vercel-build": "node scripts/postgres-schema.mjs --check && prisma generate --schema prisma/postgres/schema.prisma && prisma migrate deploy --schema prisma/postgres/schema.prisma && next build --turbopack"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@hookform/resolvers": "^7.0.6",
+    "@prisma/client": "^6.19.3",
+    "@vercel/blob": "^2.9.0",
+    "@xyflow/react": "^12.12.1",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.2",
+    "date-fns": "^4.4.0",
+    "elkjs": "^0.12.1",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^1.73.0",
+    "next": "15.5.29",
+    "next-auth": "^5.0.0-beta.29",
+    "next-intl": "^4.15.1",
+    "next-themes": "^0.4.6",
+    "prisma": "^6.19.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.29"
+    "react-hook-form": "^7.92.0",
+    "server-only": "^0.0.1",
+    "shadcn": "^4.23.0",
+    "sharp": "^0.35.5",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
