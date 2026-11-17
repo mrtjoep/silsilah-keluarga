@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Plus, UserPlus } from "lucide-react";
+import { Check, Plus, UserPlus } from "lucide-react";
 import { addRelationAction } from "@/lib/actions/relation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,20 +99,45 @@ export function AddRelationDialog({
           </div>
 
           <Field label={t("choosePerson")} htmlFor="rel-search">
-            <Input id="rel-search" placeholder="Ketik nama..." value={query} onChange={(e) => setQuery(e.target.value)} />
-            <NativeSelect
+            {candidates.length > 6 && (
+              <Input id="rel-search" placeholder="Ketik nama..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            )}
+            {/* Daftar tombol (bukan <select>) agar pilihan selalu tercatat di semua browser/ponsel */}
+            <div
+              role="radiogroup"
               aria-label={t("choosePerson")}
-              size={6}
-              className="mt-2 h-auto py-1"
-              value={relatedId}
-              onChange={(e) => setRelatedId(e.target.value)}
+              className="mt-2 max-h-64 space-y-1.5 overflow-y-auto rounded-lg border p-1.5"
             >
-              {filtered.map((c) => (
-                <option key={c.id} value={c.id} className="rounded px-2 py-1.5">
-                  {c.name} {c.year && `(${c.year})`}
-                </option>
-              ))}
-            </NativeSelect>
+              {filtered.length === 0 ? (
+                <p className="p-3 text-muted-foreground">
+                  {candidates.length <= 1 ? "Belum ada anggota lain di pohon ini." : "Tidak ada nama yang cocok."}
+                </p>
+              ) : (
+                filtered.map((c) => {
+                  const active = relatedId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => {
+                        setRelatedId(c.id);
+                        setError(null);
+                      }}
+                      className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-md border-2 px-3 py-2 text-left transition-colors ${
+                        active ? "border-primary bg-primary/10 font-semibold text-primary" : "border-transparent hover:bg-accent"
+                      }`}
+                    >
+                      <span>
+                        {c.name} {c.year && <span className="text-muted-foreground">({c.year})</span>}
+                      </span>
+                      {active && <Check className="size-5 shrink-0" aria-hidden />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </Field>
 
           {kind !== "spouse" ? (
