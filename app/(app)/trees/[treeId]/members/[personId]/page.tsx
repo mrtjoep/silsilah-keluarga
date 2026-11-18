@@ -93,7 +93,7 @@ export default async function PersonPage({
           />
           <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
             <h2 className="text-3xl font-bold text-balance">
-              {person.fullName} {person.isDeceased && <span className="text-muted-foreground">†</span>}
+              {person.fullName}
             </h2>
             {person.nickname && <p className="text-lg text-muted-foreground">“{person.nickname}”</p>}
             <div className="flex flex-wrap justify-center gap-2 sm:justify-start">

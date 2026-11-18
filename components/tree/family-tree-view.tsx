@@ -277,7 +277,7 @@ function Legend() {
           <span className="size-4 rounded border-2 border-[var(--female-border)] bg-[var(--female-bg)]" /> {tg("FEMALE")}
         </li>
         <li className="flex items-center gap-2">
-          <span className="size-4 rounded border-2 border-dashed border-muted-foreground bg-[var(--deceased-bg)]" /> Wafat (†)
+          <span className="size-4 rounded border-2 border-dashed border-muted-foreground bg-[var(--deceased-bg)]" /> Wafat (bingkai putus-putus)
         </li>
         <li className="flex items-center gap-2">
           <span className="h-0.5 w-5 bg-primary" /> Pasangan menikah

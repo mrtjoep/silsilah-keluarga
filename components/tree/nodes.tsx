@@ -49,7 +49,7 @@ export const PersonNodeView = memo(function PersonNodeView({ data, selected }: N
       <div className="min-w-0 flex-1 text-left leading-tight">
         <p className="line-clamp-2 text-[15px] font-bold text-foreground">
           {p.fullName}
-          {p.isDeceased && <span className="ml-1 font-normal text-muted-foreground">†</span>}
+          {p.isDeceased && <span className="sr-only">, wafat</span>}
         </p>
         {p.nickname && <p className="truncate text-[13px] text-muted-foreground">{p.nickname}</p>}
         <p className="text-[13px] font-medium text-muted-foreground">{lifeSpan(p) || (p.isPrivate ? "" : " ")}</p>

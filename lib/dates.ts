@@ -60,7 +60,8 @@ export function ageBetween(from: string | null | undefined, to?: string | null):
 export function lifeSpan(p: { birthDate: string | null; deathDate: string | null; isDeceased: boolean }) {
   const b = yearOf(p.birthDate);
   const d = yearOf(p.deathDate);
-  if (!b && !d) return p.isDeceased ? "†" : "";
+  // penanda wafat netral (tanpa simbol keagamaan); bingkai putus-putus juga menandai wafat
+  if (!b && !d) return p.isDeceased ? "wafat" : "";
   if (p.isDeceased) return `${b ?? "?"} – ${d ?? "?"}`;
   return `${b}`;
 }

@@ -10,7 +10,7 @@ export function PersonChip({ person, href, note, children }: { person: PersonLit
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">
           {person.fullName}
-          {person.isDeceased && <span className="ml-1 text-muted-foreground" title="Wafat">†</span>}
+          {person.isDeceased && <span className="sr-only">, wafat</span>}
         </span>
         <span className="block truncate text-sm text-muted-foreground">
           {[lifeSpan(person), note].filter(Boolean).join(" · ")}
