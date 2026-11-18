@@ -3,7 +3,7 @@
 import { getNodesBounds, getViewportForBounds, type Node } from "@xyflow/react";
 
 /** Render seluruh pohon (bukan hanya area yang terlihat) menjadi PNG data URL. */
-export async function treeToPng(nodes: Node[]): Promise<{ dataUrl: string; width: number; height: number }> {
+export async function treeToPng(nodes: Node[], createdAt = new Date()): Promise<{ dataUrl: string; width: number; height: number }> {
   const { toPng } = await import("html-to-image");
   const bounds = getNodesBounds(nodes);
   const padding = 40;
@@ -24,7 +24,7 @@ export async function treeToPng(nodes: Node[]): Promise<{ dataUrl: string; width
       pixelRatio: 1,
       style: { width: `${width}px`, height: `${height}px`, transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` },
     });
-    return await addLegend(dataUrl, width, height, bg);
+    return await addLegend(dataUrl, width, height, bg, createdAt);
   } finally {
     restore();
   }
@@ -42,7 +42,7 @@ export const LEGEND_ITEMS = [
 ] as const;
 
 /** Tambahkan kotak keterangan di bawah gambar pohon (untuk PNG & PDF). */
-async function addLegend(dataUrl: string, width: number, height: number, bg: string) {
+async function addLegend(dataUrl: string, width: number, height: number, bg: string, createdAt: Date) {
   const img = new Image();
   img.src = dataUrl;
   await img.decode();
@@ -105,6 +105,12 @@ async function addLegend(dataUrl: string, width: number, height: number, bg: str
   ctx.font = `bold ${u * 1.05}px ${font}`;
   ctx.fillText("Keterangan", pad, height + pad + u * 0.5);
   ctx.font = `${u}px ${font}`;
+  // waktu pembuatan gambar, rata kanan sebaris dengan judul
+  ctx.fillStyle = color("var(--muted-foreground)");
+  ctx.textAlign = "right";
+  ctx.fillText(`Dibuat: ${formatStamp(createdAt)}`, width - pad, height + pad + u * 0.5);
+  ctx.textAlign = "left";
+  ctx.fillStyle = fg;
 
   rows.forEach((row, r) => {
     let x = pad;
@@ -210,6 +216,24 @@ function toRgb(color: string): string {
   return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
 }
 
+/** Contoh: "18 November 2026, 14.30 WIB" (zona waktu perangkat). */
+export function formatStamp(d: Date): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(d);
+}
+
+/** Akhiran nama berkas, contoh: "2026-11-18_1430". */
+function fileStamp(d: Date): string {
+  const z = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}`;
+}
+
 function download(href: string, filename: string) {
   const a = document.createElement("a");
   a.href = href;
@@ -218,12 +242,14 @@ function download(href: string, filename: string) {
 }
 
 export async function exportPng(nodes: Node[], filename: string) {
-  const { dataUrl } = await treeToPng(nodes);
-  download(dataUrl, `${filename}.png`);
+  const now = new Date();
+  const { dataUrl } = await treeToPng(nodes, now);
+  download(dataUrl, `${filename}_${fileStamp(now)}.png`);
 }
 
 export async function exportPdf(nodes: Node[], filename: string, title: string) {
-  const [{ dataUrl, width, height }, { jsPDF }] = await Promise.all([treeToPng(nodes), import("jspdf")]);
+  const now = new Date();
+  const [{ dataUrl, width, height }, { jsPDF }] = await Promise.all([treeToPng(nodes, now), import("jspdf")]);
   const landscape = width >= height;
   const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a3" });
   const pw = pdf.internal.pageSize.getWidth();
@@ -231,12 +257,16 @@ export async function exportPdf(nodes: Node[], filename: string, title: string) 
   const margin = 28;
   pdf.setFontSize(16);
   pdf.text(title, margin, margin + 6);
+  pdf.setFontSize(10);
+  pdf.setTextColor(110);
+  pdf.text(`Dibuat: ${formatStamp(now)}`, pw - margin, margin + 6, { align: "right" });
+  pdf.setTextColor(0);
   const availW = pw - margin * 2;
   const availH = ph - margin * 2 - 24;
   const ratio = Math.min(availW / width, availH / height);
   // kompresi "FAST" (deflate) memperkecil PDF puluhan kali tanpa mengurangi ketajaman
   pdf.addImage(dataUrl, "PNG", margin + (availW - width * ratio) / 2, margin + 24, width * ratio, height * ratio, undefined, "FAST");
-  pdf.save(`${filename}.pdf`);
+  pdf.save(`${filename}_${fileStamp(now)}.pdf`);
 }
 
 export { slugify } from "@/lib/slug";
