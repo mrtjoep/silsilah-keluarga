@@ -226,7 +226,7 @@ export async function layoutFamily(
  */
 function assignLanes(nodes: FamilyNode[], edges: Edge[], vertical: boolean) {
   const box = new Map(nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.width ?? 0, h: n.height ?? 0 }]));
-  type Group = { layer: number; lo: number; hi: number; srcEnd: number; edges: Edge[] };
+  type Group = { layer: number; lo: number; hi: number; srcEnd: number; src: number; drops: number[]; edges: Edge[] };
   const groups = new Map<string, Group>();
   for (const e of edges) {
     if ((e.data as { kind?: string } | undefined)?.kind !== "child") continue;
@@ -241,12 +241,13 @@ function assignLanes(nodes: FamilyNode[], edges: Edge[], vertical: boolean) {
     const key = `${e.source}|${layer}`;
     let g = groups.get(key);
     if (!g) {
-      g = { layer, lo: sCross, hi: sCross, srcEnd, edges: [] };
+      g = { layer, lo: sCross, hi: sCross, srcEnd, src: sCross, drops: [], edges: [] };
       groups.set(key, g);
     }
     g.lo = Math.min(g.lo, tCross);
     g.hi = Math.max(g.hi, tCross);
     g.srcEnd = Math.max(g.srcEnd, srcEnd);
+    g.drops.push(tCross);
     g.edges.push(e);
   }
 
@@ -254,19 +255,37 @@ function assignLanes(nodes: FamilyNode[], edges: Edge[], vertical: boolean) {
   for (const g of groups.values()) byLayer.set(g.layer, [...(byLayer.get(g.layer) ?? []), g]);
 
   const GAP = 60; // kelompok yang berdekatan (< 60px) juga dipisah jalurnya agar tidak tampak menyambung
+  const near = (a: Group, b: Group) => a.lo <= b.hi + GAP && b.lo <= a.hi + GAP;
+  const inside = (x: number, g: Group) => x > g.lo + 1 && x < g.hi - 1;
+  // Jumlah perpotongan bila jalur `a` berada DI ATAS jalur `b` (lebih dekat ke orang tua):
+  //  - garis turun dari orang tua `b` melintasi garis mendatar `a`
+  //  - garis turun ke anak-anak `a` melintasi garis mendatar `b`
+  const cost = (a: Group, b: Group) => (inside(b.src, a) ? 1 : 0) + a.drops.filter((x) => inside(x, b)).length;
   for (const [layer, gs] of byLayer) {
     gs.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
-    const laneEnds: number[] = [];
-    const laneOf = new Map<Group, number>();
-    for (const g of gs) {
-      let i = laneEnds.findIndex((end) => end + GAP < g.lo);
-      if (i === -1) {
-        i = laneEnds.length;
-        laneEnds.push(g.hi);
-      } else laneEnds[i] = g.hi;
-      laneOf.set(g, i);
+    // urutan atas → bawah: tukar pasangan yang bertumpuk bila urutan sebaliknya lebih sedikit perpotongannya
+    for (let pass = 0; pass < gs.length; pass++) {
+      let swapped = false;
+      for (let i = 0; i < gs.length; i++) {
+        for (let j = i + 1; j < gs.length; j++) {
+          const [a, b] = [gs[i], gs[j]];
+          if (near(a, b) && cost(b, a) < cost(a, b)) {
+            gs.splice(j, 1);
+            gs.splice(i, 0, b);
+            swapped = true;
+          }
+        }
+      }
+      if (!swapped) break;
     }
-    const lanes = laneEnds.length;
+    // jalur = satu di bawah jalur terendah milik kelompok bertumpuk yang sudah ditempatkan
+    const laneOf = new Map<Group, number>();
+    for (const [i, g] of gs.entries()) {
+      let lane = 0;
+      for (const h of gs.slice(0, i)) if (near(g, h)) lane = Math.max(lane, laneOf.get(h)! + 1);
+      laneOf.set(g, lane);
+    }
+    const lanes = Math.max(...laneOf.values()) + 1;
     const top = Math.max(...gs.map((g) => g.srcEnd)) + 6;
     const bottom = layer - 8;
     for (const g of gs) {
@@ -308,6 +327,24 @@ function modelOrder(
     }
   };
 
+  /**
+   * Sisi keluarga besan seorang anak, untuk mengurutkan saudara kandung:
+   * -1 = keluarga pasangannya sudah ditempatkan (di kiri) → anak ini paling kiri,
+   * +1 = keluarga pasangannya belum ditempatkan (akan menyusul di kanan) → anak ini paling kanan,
+   * sehingga garis dari keluarga besan tidak melintasi saudara-saudaranya.
+   */
+  function inLawSide(id: string): number {
+    let side = 0;
+    for (const u of unionsOf.get(id) ?? []) {
+      const s = u.partner1Id === id ? u.partner2Id : u.partner1Id;
+      const ps = parentsOf.get(s) ?? [];
+      if (ps.length === 0) continue;
+      if (ps.some((x) => !seen.has(x.parentId))) side = Math.max(side, 1);
+      else if (side === 0) side = -1;
+    }
+    return side;
+  }
+
   function visit(id: string) {
     if (seen.has(id)) return;
     const us = unionsOf.get(id) ?? [];
@@ -333,7 +370,7 @@ function modelOrder(
     const kidsDone = new Set<string>();
     for (const u of us) {
       const kids = (childrenOf.get(id) ?? []).filter((c) => (parentsOf.get(c) ?? []).some((x) => x.parentId === spouse(u)));
-      kids.sort((a, b) => birth(a).localeCompare(birth(b)));
+      kids.sort((a, b) => inLawSide(a) - inLawSide(b) || birth(a).localeCompare(birth(b)));
       for (const k of kids) {
         kidsDone.add(k);
         visit(k);

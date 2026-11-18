@@ -267,23 +267,46 @@ function Legend() {
   const t = useTranslations("tree");
   const tg = useTranslations("gender");
   return (
-    <details className="absolute top-3 left-3 z-[5] rounded-xl border bg-card/95 p-3 text-sm shadow-sm">
+    <details
+      // terbuka otomatis di layar lebar; di ponsel tetap ringkas agar tidak menutupi pohon
+      ref={(el) => {
+        if (el && !el.dataset.init) {
+          el.dataset.init = "1";
+          el.open = window.matchMedia("(min-width: 768px)").matches;
+        }
+      }}
+      className="absolute top-3 left-3 z-[5] rounded-xl border bg-card/95 p-3 text-sm shadow-sm"
+    >
       <summary className="cursor-pointer font-semibold">{t("legend")}</summary>
       <ul className="mt-2 space-y-1.5">
         <li className="flex items-center gap-2">
-          <span className="size-4 rounded border-2 border-[var(--male-border)] bg-[var(--male-bg)]" /> {tg("MALE")}
+          <span className="h-4 w-6 rounded border-2 border-[var(--male-border)] bg-[var(--male-bg)]" /> {tg("MALE")}
         </li>
         <li className="flex items-center gap-2">
-          <span className="size-4 rounded border-2 border-[var(--female-border)] bg-[var(--female-bg)]" /> {tg("FEMALE")}
+          <span className="h-4 w-6 rounded border-2 border-[var(--female-border)] bg-[var(--female-bg)]" /> {tg("FEMALE")}
         </li>
         <li className="flex items-center gap-2">
-          <span className="size-4 rounded border-2 border-dashed border-muted-foreground bg-[var(--deceased-bg)]" /> Wafat (bingkai putus-putus)
+          <span className="h-4 w-6 rounded border-2 border-dashed border-muted-foreground bg-[var(--deceased-bg)]" /> Sudah wafat (bingkai putus-putus)
         </li>
         <li className="flex items-center gap-2">
-          <span className="h-0.5 w-5 bg-primary" /> Pasangan menikah
+          <span className="relative flex h-4 w-6 items-center">
+            <span className="h-[3px] w-full bg-primary" />
+            <span className="absolute left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-primary" />
+          </span>
+          Pasangan menikah (titik = pasangan)
         </li>
         <li className="flex items-center gap-2">
-          <span className="h-0 w-5 border-t-2 border-dashed border-muted-foreground" /> Bercerai / anak angkat
+          <span className="relative flex h-4 w-6 items-center">
+            <span className="w-full border-t-[3px] border-dashed border-muted-foreground" />
+            <span className="absolute left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-muted-foreground" />
+          </span>
+          Bercerai / berpisah
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="h-0 w-6 border-t-2 border-[var(--xy-edge-stroke-default,#b1b1b7)]" /> Orang tua → anak kandung
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="h-0 w-6 border-t-2 border-dashed border-[var(--xy-edge-stroke-default,#b1b1b7)]" /> Anak angkat / tiri / asuh
         </li>
       </ul>
     </details>

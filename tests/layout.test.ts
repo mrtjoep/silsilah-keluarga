@@ -135,3 +135,91 @@ for (const [name, fixture] of [
     });
   }
 }
+
+// Bentuk pohon besar dari laporan pengguna (nama generik): 3 keluarga di generasi atas,
+// anak yang menikah dengan keluarga lain, dan seorang anak yang menikah dua kali.
+const bigFamily: FamilyData = (() => {
+  const persons = [
+    P("ka", "MALE", "1921"), P("na", "FEMALE", "1929"), // keluarga A
+    P("kb", "MALE", "9999"), P("nb", "FEMALE", "9999"), // keluarga B (tanpa tahun)
+    P("kc", "MALE", "1952"), P("nc", "FEMALE", "1955"), // keluarga C
+    P("ibu", "FEMALE", "1949"), P("pamanA", "MALE", "1951"), P("ayah", "MALE", "1941"),
+    P("c1", "MALE", "1970"), P("c1w", "FEMALE", "1970"), P("c2", "MALE", "1971"), P("c2w", "FEMALE", "1973"),
+    P("c3", "MALE", "1973"), P("c4", "FEMALE", "1975"), P("c4h1", "MALE", "9999"), P("c4h2", "MALE", "9999"),
+    P("c5", "FEMALE", "1977"), P("c5h1", "MALE", "9999"), P("c5h2", "MALE", "9999"),
+    P("menantuC", "FEMALE", "1977"), P("adikC1", "FEMALE", "1979"), P("adikC2", "MALE", "1989"),
+    ...["g1", "g2", "g3"].map((g, i) => P(g, "MALE", `199${i}`)),
+    ...["g4", "g5"].map((g, i) => P(g, "FEMALE", `200${i}`)),
+    ...["g6", "g7", "g8", "g9"].map((g, i) => P(g, "FEMALE", `199${i + 6}`)),
+    P("g10", "MALE", "2000"), P("g11", "FEMALE", "2002"), P("g12", "MALE", "2004"),
+    P("g13", "FEMALE", "2001"), P("g14", "MALE", "2003"), P("g15", "FEMALE", "2005"), P("g16", "MALE", "9999"),
+  ];
+  const kids = (a: string, b: string, cs: string[]) => cs.flatMap((c) => [[a, c], [b, c]]);
+  const links = [
+    ...kids("ka", "na", ["ibu", "pamanA"]),
+    ...kids("kb", "nb", ["ayah"]),
+    ...kids("kc", "nc", ["menantuC", "adikC1", "adikC2"]),
+    ...kids("ayah", "ibu", ["c1", "c2", "c3", "c4", "c5"]),
+    ...kids("c1", "c1w", ["g1", "g2", "g3"]),
+    ...kids("c2", "c2w", ["g4", "g5"]),
+    ...kids("c3", "menantuC", ["g6", "g7", "g8", "g9"]),
+    ...kids("c4", "c4h1", ["g10", "g11"]),
+    ...kids("c4", "c4h2", ["g12"]),
+    ...kids("c5", "c5h1", ["g13", "g14", "g15"]),
+    ...kids("c5", "c5h2", ["g16"]),
+  ];
+  const U = (id: string, a: string, b: string, status: "MARRIED" | "DIVORCED" = "MARRIED", marriageDate: string | null = null) =>
+    ({ id, partner1Id: a, partner2Id: b, status, marriageDate, endDate: null });
+  return {
+    persons,
+    parentLinks: links.map(([p, c], i) => ({ id: `b${i}`, parentId: p, childId: c, type: "BIOLOGICAL" as const })),
+    unions: [
+      U("ua", "ka", "na"), U("ub", "kb", "nb"), U("uc", "kc", "nc"), U("up", "ayah", "ibu"),
+      U("u1", "c1", "c1w"), U("u2", "c2", "c2w"), U("u3", "c3", "menantuC"),
+      U("u4a", "c4h1", "c4", "MARRIED", "1995"), U("u4b", "c4", "c4h2", "DIVORCED", "2003"),
+      U("u5a", "c5h1", "c5", "MARRIED", "1998"), U("u5b", "c5", "c5h2", "MARRIED", "2008"),
+    ],
+  };
+})();
+
+/** Hitung perpotongan antar garis orang tua → anak (tampilan vertikal). */
+function countCrossings(nodes: { id: string; position: { x: number; y: number }; width?: number; height?: number }[], edges: import("@xyflow/react").Edge[]) {
+  const box = new Map(nodes.map((n) => [n.id, n]));
+  type Seg = { src: string; x1: number; y1: number; x2: number; y2: number };
+  const segs: Seg[] = [];
+  for (const e of edges) {
+    const cy = (e.data as { centerY?: number } | undefined)?.centerY;
+    if (cy === undefined) continue;
+    const s = box.get(e.source)!, t = box.get(e.target)!;
+    const sx = s.position.x + (s.width ?? 0) / 2, sy = s.position.y + (s.height ?? 0);
+    const tx = t.position.x + (t.width ?? 0) / 2, ty = t.position.y;
+    segs.push({ src: e.source, x1: sx, y1: sy, x2: sx, y2: cy });
+    segs.push({ src: e.source, x1: Math.min(sx, tx), y1: cy, x2: Math.max(sx, tx), y2: cy });
+    segs.push({ src: e.source, x1: tx, y1: cy, x2: tx, y2: ty });
+  }
+  let n = 0;
+  const found: string[] = [];
+  for (const v of segs) {
+    if (v.x1 !== v.x2) continue;
+    for (const h of segs) {
+      if (h.y1 !== h.y2 || h.src === v.src) continue;
+      const [ylo, yhi] = [Math.min(v.y1, v.y2), Math.max(v.y1, v.y2)];
+      if (v.x1 > h.x1 + 1 && v.x1 < h.x2 - 1 && h.y1 > ylo + 1 && h.y1 < yhi - 1) {
+        n++;
+        found.push(`${v.src}@${Math.round(v.x1)} × ${h.src}`);
+      }
+    }
+  }
+  return { n, found };
+}
+
+test("pohon besar: garis orang tua → anak tidak saling memotong", async () => {
+  const { nodes, edges } = await layoutFamily(bigFamily, "DOWN");
+  const { n, found } = countCrossings(nodes, edges);
+  assert.equal(n, 0, `perpotongan: ${found.join(", ")}`);
+  const x = (id: string) => nodes.find((p) => p.id === id)!.position.x;
+  // anak yang menikah dengan keluarga C berada paling kanan di antara saudaranya
+  for (const s of ["c1", "c2", "c4", "c5"]) assert.ok(x(s) < x("c3"), `${s} sebelum c3`);
+  // paman (saudara ibu) di kiri ibu, karena keluarga ayah ada di kanan
+  assert.ok(x("pamanA") < x("ibu"));
+});
