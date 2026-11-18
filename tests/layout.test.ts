@@ -93,3 +93,45 @@ for (const direction of ["DOWN", "RIGHT"] as const) {
     assert.ok(at("menantuLaki") < at("menantuPerempuan"), "suami (keluarga A) di sisi keluarga A");
   });
 }
+
+// Kasus: adik kandung suami (anakA3) diletakkan ELK di antara suami & istri dari keluarga lain.
+const siblingBetween: FamilyData = {
+  persons: [
+    P("kakekA", "MALE", "1941"), P("nenekA", "FEMALE", "1949"),
+    P("kakekB", "MALE", "1952"), P("nenekB", "FEMALE", "1955"),
+    P("anakA1", "MALE", "1970"), P("anakA2", "MALE", "1971"), P("suami", "MALE", "1973"), P("anakA3", "FEMALE", "1975"),
+    P("istri", "FEMALE", "1977"), P("anakB2", "FEMALE", "1979"), P("anakB3", "MALE", "1989"),
+    P("c1", "FEMALE", "1999"), P("c2", "FEMALE", "2001"), P("c3", "FEMALE", "2003"), P("c4", "MALE", "2007"),
+  ],
+  parentLinks: [
+    ...["anakA1", "anakA2", "suami", "anakA3"].flatMap((c) => [["kakekA", c], ["nenekA", c]]),
+    ...["istri", "anakB2", "anakB3"].flatMap((c) => [["kakekB", c], ["nenekB", c]]),
+    ...["c1", "c2", "c3", "c4"].flatMap((c) => [["suami", c], ["istri", c]]),
+  ].map(([p, c], i) => ({ id: `s${i}`, parentId: p, childId: c, type: "BIOLOGICAL" as const })),
+  unions: [
+    { id: "ua", partner1Id: "kakekA", partner2Id: "nenekA", status: "MARRIED" as const, marriageDate: null, endDate: null },
+    { id: "ub", partner1Id: "kakekB", partner2Id: "nenekB", status: "MARRIED" as const, marriageDate: null, endDate: null },
+    { id: "uc", partner1Id: "suami", partner2Id: "istri", status: "MARRIED" as const, marriageDate: null, endDate: null },
+  ],
+};
+
+for (const [name, fixture] of [
+  ["dua pernikahan", twoMarriages],
+  ["dua keluarga besan", twoFamilies],
+  ["adik di antara pasangan", siblingBetween],
+] as const) {
+  for (const direction of ["DOWN", "RIGHT"] as const) {
+    test(`titik pasangan tidak menumpuk kartu anggota — ${name} (${direction})`, async () => {
+      const { nodes } = await layoutFamily(fixture, direction);
+      const people = nodes.filter((n) => n.type === "person");
+      for (const u of nodes.filter((n) => n.type === "union")) {
+        const ux = u.position.x, uy = u.position.y, uw = u.width ?? 0, uh = u.height ?? 0;
+        for (const p of people) {
+          const px = p.position.x, py = p.position.y, pw = p.width ?? 0, ph = p.height ?? 0;
+          const overlap = ux < px + pw && ux + uw > px && uy < py + ph && uy + uh > py;
+          assert.ok(!overlap, `titik ${u.id} menumpuk kartu ${p.id}`);
+        }
+      }
+    });
+  }
+}

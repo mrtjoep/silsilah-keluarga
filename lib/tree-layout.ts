@@ -153,7 +153,21 @@ export async function layoutFamily(
     const b = pos.get(u.partner2Id)!;
     let x: number, y: number;
     const sameLayer = vertical ? Math.abs(a.y - b.y) < 1 : Math.abs(a.x - b.x) < 1;
-    if (sameLayer) {
+    // Titik pasangan hanya diletakkan DI ANTARA kedua kartu bila keduanya benar-benar
+    // berdampingan. Jika ada kartu lain di antaranya (mis. adik ipar), titik di tengah akan
+    // menumpuk kartu itu → gunakan posisi ELK di bawah deretan kartu dan tarik garis dari bawah.
+    const between = (lo: number, hi: number) =>
+      data.persons.some((p) => {
+        if (p.id === u.partner1Id || p.id === u.partner2Id) return false;
+        const q = pos.get(p.id);
+        if (!q) return false;
+        return vertical
+          ? Math.abs(q.y - a.y) < 1 && q.x > lo && q.x < hi
+          : Math.abs(q.x - a.x) < 1 && q.y > lo && q.y < hi;
+      });
+    const adjacent =
+      sameLayer && !(vertical ? between(Math.min(a.x, b.x), Math.max(a.x, b.x)) : between(Math.min(a.y, b.y), Math.max(a.y, b.y)));
+    if (adjacent) {
       if (vertical) {
         const [l, r] = a.x < b.x ? [a, b] : [b, a];
         x = (l.x + pw + r.x) / 2 - UNION_SIZE / 2;
@@ -181,8 +195,10 @@ export async function layoutFamily(
     for (const pid of [u.partner1Id, u.partner2Id]) {
       const edge = rfEdges.find((e) => e.id === `e-${pid}-${uid}`)!;
       const pp = pos.get(pid)!;
-      if (!sameLayer) {
+      if (!adjacent) {
+        // garis turun dari bawah kartu ke titik pasangan (tidak melintasi kartu lain)
         edge.type = "smoothstep";
+        (edge as Edge & { pathOptions?: { offset?: number; borderRadius?: number } }).pathOptions = { offset: 6, borderRadius: 6 };
         edge.sourceHandle = vertical ? "s-b" : "s-r";
         edge.targetHandle = vertical ? "t-t" : "t-l";
       } else if (vertical) {

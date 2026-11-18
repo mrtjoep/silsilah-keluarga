@@ -96,6 +96,8 @@ export const FamilyEdge = memo(function FamilyEdge({
     targetY,
     targetPosition,
     borderRadius: 6,
+    // jarak tekuk kecil agar garis tetap lurus walau ruang antar-generasi sempit
+    offset: 6,
     centerX: d?.centerX,
     centerY: d?.centerY,
   });
